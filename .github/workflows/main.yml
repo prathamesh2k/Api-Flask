@@ -1,0 +1,36 @@
+name: CI with Docker
+
+on:
+ workflow_dispatch
+
+env:
+ DOCKER_USERNAME: ${{vars.DOCKER_NAME}}
+ DOCKER_PASSWORD: ${{secrets.NEW_DOCKER_PASSWORD}}
+ DOCKER_IMAGE: karthikamn/my-python-api-flask
+jobs:
+ build-using-docker:
+  runs-on: ubuntu-latest
+  steps:
+   - name: Checkout code 
+     uses: actions/checkout@v4.2.2
+  
+   - name: Docker Build
+     run: |
+      docker build -t $DOCKER_IMAGE:${{github.sha}} .
+      docker tag $DOCKER_IMAGE:${{github.sha}} $DOCKER_IMAGE:latest
+
+   - name: run-docker
+     run: |
+      docker run -d --name flask-python -p 5000:5000 $DOCKER_IMAGE:latest
+   - name: Setup Kubectl
+     uses: azure/setup-kubectl@v4
+     with:
+       version: latest
+   - name: Setup Minikube
+     run: |
+      minikube start
+      kubectl config use-context minikube
+   - name: Deployment k8s
+     run: |
+      kubectl apply -f k8s/deployment.yml
+      kubectl apply -f k8s/service.yml
